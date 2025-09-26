@@ -1,0 +1,53 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "description": "Original Telegram message ID"
+    },
+    "date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Message date and time"
+    },
+    "from_name": {
+      "type": "string",
+      "description": "Sender name"
+    },
+    "text_content": {
+      "type": "string",
+      "description": "Message text content"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extracted hashtags from message"
+    },
+    "media_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of media files (photos, videos)"
+    },
+    "has_media_link": {
+      "type": "boolean",
+      "description": "Whether message contains 'Открыть видео и фото' link"
+    },
+    "telegram_link": {
+      "type": "string",
+      "description": "Link to original Telegram message"
+    },
+    "file_source": {
+      "type": "string",
+      "description": "Which HTML file this came from"
+    }
+  },
+  "required": [
+    "message_id",
+    "text_content"
+  ]
+}
