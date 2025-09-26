@@ -1,0 +1,113 @@
+
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Image, Grid, List } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { format } from "date-fns"; // Added this import
+
+export default function MediaGallery({ messages, hashtag }) {
+    const [viewMode, setViewMode] = useState('grid');
+    const [selectedImage, setSelectedImage] = useState(null);
+
+    // Get all media files from messages
+    const allMedia = [];
+    messages.forEach(message => {
+        if (message.media_files && message.media_files.length > 0) {
+            message.media_files.forEach(mediaUrl => {
+                allMedia.push({
+                    url: mediaUrl,
+                    messageId: message.message_id,
+                    date: message.date,
+                    text: message.text_content
+                });
+            });
+        }
+    });
+
+    if (allMedia.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <Card className="mb-8 bg-white/80 backdrop-blur-sm shadow-lg">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                            <Image className="w-5 h-5" />
+                            Media Gallery ({allMedia.length} items)
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant={viewMode === 'grid' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setViewMode('grid')}
+                            >
+                                <Grid className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                variant={viewMode === 'list' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setViewMode('list')}
+                            >
+                                <List className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className={
+                        viewMode === 'grid' 
+                            ? 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3'
+                            : 'grid grid-cols-1 md:grid-cols-2 gap-4'
+                    }>
+                        {allMedia.map((media, idx) => (
+                            <div 
+                                key={idx}
+                                className={`${
+                                    viewMode === 'grid' 
+                                        ? 'aspect-square' 
+                                        : 'aspect-video'
+                                } bg-gray-200 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200`}
+                                onClick={() => setSelectedImage(media)}
+                            >
+                                <img
+                                    src={media.url}
+                                    alt={`Media from ${hashtag}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBGb3VuZDwvdGV4dD48L3N2Zz4=';
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Image Modal */}
+            <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                    {selectedImage && (
+                        <div className="space-y-4">
+                            <img
+                                src={selectedImage.url}
+                                alt="Full size preview"
+                                className="w-full h-auto rounded-lg"
+                            />
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <p className="text-sm text-gray-600 mb-2">
+                                    {selectedImage.date && format(new Date(selectedImage.date), "MMM d, yyyy 'at' HH:mm")}
+                                </p>
+                                <p className="text-gray-700 whitespace-pre-wrap">
+                                    {selectedImage.text}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
