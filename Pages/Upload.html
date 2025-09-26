@@ -1,0 +1,119 @@
+import React, { useState } from "react";
+import { Message } from "@/entities/Message";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+export default function UploadPage() {
+    const navigate = useNavigate();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState({ success: 0, errors: [] });
+
+    const parseHTMLContent = (htmlContent, fileName) => {
+        // Create a DOM parser
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+        
+        const messages = [];
+        const messageElements = doc.querySelectorAll('.message.default');
+
+        messageElements.forEach(messageEl => {
+            try {
+                const messageId = messageEl.id || `${fileName}-${Date.now()}-${Math.random()}`;
+                
+                // Extract date
+                const dateEl = messageEl.querySelector('.date');
+                const dateTitle = dateEl?.getAttribute('title') || '';
+                
+                // Extract sender
+                const fromNameEl = messageEl.querySelector('.from_name');
+                const fromName = fromNameEl?.textContent?.trim() || '';
+                
+                // Extract text content
+                const textEl = messageEl.querySelector('.text');
+                const textContent = textEl?.textContent?.trim() || '';
+                
+                // Skip if no text content
+                if (!textContent) return;
+                
+                // Extract hashtags
+                const hashtagMatches = textContent.match(/#\w+/g) || [];
+                const hashtags = hashtagMatches.map(tag => tag.replace('#', ''));
+                
+                // Skip if no hashtags
+                if (hashtags.length === 0) return;
+                
+                // Check for media link
+                const hasMediaLink = textContent.includes('Открыть видео и фото');
+                
+                // Extract media files
+                const mediaFiles = [];
+                const photoElements = messageEl.querySelectorAll('img.photo');
+                photoElements.forEach(img => {
+                    const src = img.getAttribute('src');
+                    if (src) {
+                        mediaFiles.push(src);
+                    }
+                });
+                
+                // Extract Telegram link
+                const telegramLinks = textContent.match(/https:\/\/t\.me\/c\/\d+\/\d+/g) || [];
+                const telegramLink = telegramLinks[0] || '';
+                
+                messages.push({
+                    message_id: messageId,
+                    date: dateTitle || new Date().toISOString(),
+                    from_name: fromName,
+                    text_content: textContent,
+                    hashtags: hashtags,
+                    media_files: mediaFiles,
+                    has_media_link: hasMediaLink,
+                    telegram_link: telegramLink,
+                    file_source: fileName
+                });
+            } catch (error) {
+                console.error("Error parsing message:", error);
+            }
+        });
+
+        return messages;
+    };
+
+    const handleFileUpload = async (event) => {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+
+        setIsProcessing(true);
+        setUploadStatus({ success: 0, errors: [] });
+
+        const errors = [];
+        let successCount = 0;
+
+        for (const file of files) {
+            try {
+                if (!file.name.endsWith('.html')) {
+                    errors.push(`${file.name}: Only HTML files are supported`);
+                    continue;
+                }
+
+                const content = await file.text();
+                const messages = parseHTMLContent(content, file.name);
+
+                if (messages.length > 0) {
+                    // Create messages in batches
+                    const batchSize = 50;
+                    for (let i = 0; i < messages.length; i += batchSize) {
+                        const batch = messages.slice(i, i + batchSize);
+                        await Message.bulkCreate(batch);
+                    }
+                    successCount += messages.length;
+                } else {
+                    errors.push(`${file.name}: No messages with hashtags found`);
+                }
+            } catch (error) {
+                errors.push(`${file.name}: ${error.message}`);
+            }
+        }
